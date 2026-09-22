@@ -10,7 +10,7 @@ The menu follows the system language (English or German).
 
 The current disk image is on the [latest release](https://github.com/B43rli3/snippy/releases/latest). Open it and drag Snippy to Applications.
 
-Install steps, the first-launch prompt, Screen Recording, and notifications are in **[Install and set up](docs/INSTALL.md)**.
+The first time you open it, macOS says it could not verify the app. Click **Done**, not **Move to Trash**, then choose **Open Anyway** under **System Settings → Privacy & Security**. The full steps for that prompt, Screen Recording, and notifications are in **[Install and set up](docs/INSTALL.md)**.
 
 ## Requirements
 

@@ -18,15 +18,16 @@ Open the latest release and download **Snippy.dmg**:
 1. Open `Snippy.dmg`.
 2. Drag **Snippy** onto the **Applications** folder.
 3. Eject the disk image.
-4. Open the Applications folder. Do not double-click Snippy yet.
+4. In Applications, double-click **Snippy**.
 
-macOS blocks the first launch because this download is not notarized by Apple. That is expected.
+macOS blocks that first launch because Apple has not checked this download. A window appears: **“Snippy” was not opened**, with the buttons **Move to Trash** and **Done**. The app is not damaged.
 
-1. In Applications, **right-click Snippy** and choose **Open**.
-2. Confirm **Open** in the dialog.
-3. If macOS still blocks it, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+1. Click **Done**. Do not click **Move to Trash**. **Done** looks gray, and it is the button you need.
+2. Open **System Settings → Privacy & Security**.
+3. Scroll to the bottom. macOS shows that it blocked Snippy. Click **Open Anyway**.
+4. Confirm **Open**.
 
-Snippy then sits in the menu bar. There is no Dock icon. Look for the scissors at the top right of the screen.
+Snippy then sits in the menu bar. There is no Dock icon. Look for the scissors at the top right of the screen. This extra step is only needed the first time.
 
 ## 3. Allow screen recording
 
