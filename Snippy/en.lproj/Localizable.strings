@@ -1,0 +1,26 @@
+/* English */
+"app.name" = "Snippy";
+"menu.shortcut" = "Shortcut: Fn+S";
+"menu.newCapture" = "New Screenshot";
+"menu.openLast" = "Open Last Screenshot";
+"menu.login" = "Open at Login";
+"menu.accessibility" = "Allow Accessibility…";
+"menu.screenRecording" = "Allow Screen Recording…";
+"menu.quit" = "Quit Snippy";
+"toolbar.screen" = "Screen";
+"toolbar.region" = "Region";
+"toolbar.window" = "Window";
+"toolbar.cancel" = "Cancel";
+"onboarding.title" = "Welcome to Snippy";
+"onboarding.continue" = "Continue";
+"onboarding.body" = "Snippy stays in the menu bar. Press Fn+S to freeze the screen, then choose Screen, Region, or Window. Screenshots are saved to Pictures → Screenshots and copied to the clipboard.\n\nSnippy needs Accessibility (for Fn+S) and Screen Recording. If the Globe key opens emoji, set it to “Do Nothing” in Keyboard settings.";
+"permission.screen.title" = "Screen Recording Needed";
+"permission.screen.body" = "Snippy needs Screen Recording permission to freeze and save your screen.";
+"permission.accessibility.title" = "Keyboard Access Needed";
+"permission.accessibility.body" = "Fn+S only works after you allow Snippy in Accessibility.";
+"permission.openSettings" = "Open Settings";
+"error.title" = "Snippy";
+"error.ok" = "OK";
+"error.noDisplays" = "No display was found.";
+"error.captureFailed" = "The screenshot could not be captured.";
+"error.windowUnavailable" = "That window is no longer available.";

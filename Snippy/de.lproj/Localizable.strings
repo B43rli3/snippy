@@ -1,0 +1,26 @@
+/* German */
+"app.name" = "Snippy";
+"menu.shortcut" = "Tastenkürzel: Fn+S";
+"menu.newCapture" = "Neuer Screenshot";
+"menu.openLast" = "Letzten Screenshot öffnen";
+"menu.login" = "Beim Anmelden starten";
+"menu.accessibility" = "Bedienungshilfen erlauben…";
+"menu.screenRecording" = "Bildschirmaufnahme erlauben…";
+"menu.quit" = "Snippy beenden";
+"toolbar.screen" = "Bildschirm";
+"toolbar.region" = "Bereich";
+"toolbar.window" = "Fenster";
+"toolbar.cancel" = "Abbrechen";
+"onboarding.title" = "Willkommen bei Snippy";
+"onboarding.continue" = "Weiter";
+"onboarding.body" = "Snippy bleibt in der Menüleiste. Mit Fn+S wird der Bildschirm eingefroren. Anschließend Bildschirm, Bereich oder Fenster wählen. Screenshots landen in Bilder → Screenshots und in der Zwischenablage.\n\nDafür braucht Snippy Bedienungshilfen (für Fn+S) und Bildschirmaufnahme. Wenn die Globus-Taste Emoji öffnet, stelle sie unter Tastatur auf „Keine Aktion“.";
+"permission.screen.title" = "Bildschirmaufnahme benötigt";
+"permission.screen.body" = "Snippy braucht die Bildschirmaufnahme, um den Bildschirm einzufrieren und zu speichern.";
+"permission.accessibility.title" = "Tastaturzugriff benötigt";
+"permission.accessibility.body" = "Fn+S funktioniert nur, wenn Snippy unter Bedienungshilfen erlaubt ist.";
+"permission.openSettings" = "Einstellungen öffnen";
+"error.title" = "Snippy";
+"error.ok" = "OK";
+"error.noDisplays" = "Es wurde kein Bildschirm gefunden.";
+"error.captureFailed" = "Der Screenshot konnte nicht aufgenommen werden.";
+"error.windowUnavailable" = "Dieses Fenster ist nicht mehr verfügbar.";

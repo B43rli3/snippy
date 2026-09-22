@@ -1,0 +1,166 @@
+import AppKit
+import SwiftUI
+
+final class CaptureOverlayController: NSObject, @unchecked Sendable {
+    private(set) var isActive = false
+    var onOutcome: ((OverlayOutcome) -> Void)?
+
+    private let state = OverlayState()
+    private var overlayWindows: [OverlayWindow] = []
+    private var toolbarWindow: NSWindow?
+    private var session: FrozenSession?
+
+    func present(_ session: FrozenSession) {
+        cancel(notify: false)
+        self.session = session
+        isActive = true
+        state.mode = .region
+
+        for display in session.displays {
+            let window = OverlayWindow(display: display, state: state, windows: session.windows)
+            window.onRegionSelected = { [weak self] rect in
+                self?.finishRegion(rect, on: display)
+            }
+            window.onWindowChosen = { [weak self] windowID in
+                self?.finishWindow(windowID, on: display)
+            }
+            window.onCancel = { [weak self] in
+                self?.cancel(notify: true)
+            }
+            overlayWindows.append(window)
+            window.orderFrontRegardless()
+        }
+
+        let mouseScreen = ScreenGeometry.screen(containing: NSEvent.mouseLocation)
+        showToolbar(on: mouseScreen ?? session.displays.first?.screen)
+        NSApp.activate(ignoringOtherApps: true)
+        let keyWindow =
+            overlayWindows.first { window in
+                guard let mouseScreen else { return false }
+                return window.frame.intersects(mouseScreen.frame)
+            } ?? overlayWindows.first
+        keyWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    func cancel(notify: Bool) {
+        let wasActive = isActive
+        dismiss()
+        if notify, wasActive {
+            onOutcome?(.cancel)
+        }
+    }
+
+    func handleEscape() -> Bool {
+        guard isActive else { return false }
+        cancel(notify: true)
+        return true
+    }
+
+    func captureTestRegion(_ rect: NSRect) {
+        guard let display = session?.displays.first else { return }
+        finishRegion(rect, on: display)
+    }
+
+    func captureActiveScreenForTest() {
+        captureFullScreen(of: ScreenGeometry.screen(containing: NSEvent.mouseLocation))
+    }
+
+    private func finishRegion(_ rect: NSRect, on display: FrozenDisplay) {
+        emitCroppedImage(rect, on: display)
+    }
+
+    private func finishWindow(_ windowID: CGWindowID, on display: FrozenDisplay) {
+        guard let target = session?.windows.first(where: { $0.windowID == windowID }) else {
+            cancel(notify: true)
+            return
+        }
+        let viewRect = ScreenGeometry.viewRect(forGlobalRect: target.frameCocoa, screenFrame: display.screen.frame)
+        emitCroppedImage(viewRect, on: display)
+    }
+
+    private func emitCroppedImage(_ rect: NSRect, on display: FrozenDisplay) {
+        let imageBounds = CGRect(x: 0, y: 0, width: display.image.width, height: display.image.height)
+        let crop = ScreenGeometry.crop(rect, viewSize: display.screen.frame.size, image: display.image).intersection(imageBounds)
+        guard crop.width >= 1, crop.height >= 1, let image = display.image.cropping(to: crop) else {
+            cancel(notify: true)
+            return
+        }
+        dismiss()
+        onOutcome?(.image(image))
+    }
+
+    private func captureFullScreen(of screen: NSScreen?) {
+        let displayID = screen.map(ScreenGeometry.displayID)
+        let display =
+            session?.displays.first { displayID != nil && $0.displayID == displayID }
+            ?? session?.displays.first { $0.screen === screen }
+            ?? session?.displays.first
+        guard let display else { return }
+        dismiss()
+        onOutcome?(.image(display.image))
+    }
+
+    private func dismiss() {
+        isActive = false
+        overlayWindows.forEach { $0.orderOut(nil); $0.close() }
+        overlayWindows.removeAll()
+        toolbarWindow?.orderOut(nil)
+        toolbarWindow?.close()
+        toolbarWindow = nil
+        session = nil
+    }
+
+    private func showToolbar(on screen: NSScreen?) {
+        let host = NSHostingView(
+            rootView: CaptureToolbarView(
+                state: state,
+                onChooseScreen: { [weak self] in
+                    self?.captureFullScreen(
+                        of: ScreenGeometry.screen(containing: NSEvent.mouseLocation) ?? screen
+                    )
+                },
+                onCancel: { [weak self] in
+                    self?.cancel(notify: true)
+                }
+            )
+        )
+        host.frame = NSRect(x: 0, y: 0, width: 360, height: 64)
+        host.layoutSubtreeIfNeeded()
+        let fitting = host.fittingSize
+        host.frame = NSRect(origin: .zero, size: NSSize(width: max(fitting.width, 320), height: max(fitting.height, 58)))
+
+        let window = NSWindow(
+            contentRect: host.frame,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.screenSaverWindow)) + 2)
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        window.sharingType = .none
+        window.isReleasedWhenClosed = false
+        window.hidesOnDeactivate = false
+        window.animationBehavior = .none
+        window.title = "Snippy Toolbar"
+        window.identifier = NSUserInterfaceItemIdentifier("snippy.toolbar")
+        window.contentView = host
+        window.ignoresMouseEvents = false
+
+        let target = screen ?? NSScreen.main
+        if let target {
+            let menuBarHeight = max(target.frame.maxY - target.visibleFrame.maxY, 24)
+            let size = host.frame.size
+            let origin = NSPoint(
+                x: target.frame.midX - size.width / 2,
+                y: target.frame.maxY - menuBarHeight - 12 - size.height
+            )
+            window.setFrame(NSRect(origin: origin, size: size), display: true)
+        }
+
+        window.orderFrontRegardless()
+        toolbarWindow = window
+    }
+}
