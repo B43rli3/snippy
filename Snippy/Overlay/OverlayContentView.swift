@@ -1,12 +1,12 @@
 import AppKit
 import Combine
 
+/// Zeichnet das eingefrorene Bild, dunkelt es ab und nimmt Bereich oder Fenster entgegen.
 final class OverlayContentView: NSView {
     var onRegionSelected: ((NSRect) -> Void)?
     var onWindowChosen: ((CGWindowID) -> Void)?
     var onCancel: (() -> Void)?
 
-    private let display: FrozenDisplay
     private let state: OverlayState
     private let windows: [CapturableWindow]
     private let snapshot: NSImage
@@ -17,12 +17,20 @@ final class OverlayContentView: NSView {
     private var highlightedWindow: CapturableWindow?
 
     init(display: FrozenDisplay, state: OverlayState, windows: [CapturableWindow]) {
-        self.display = display
         self.state = state
         self.windows = windows
-        self.snapshot = NSImage(cgImage: display.image, size: display.screen.frame.size)
+        let scale = max(display.screen.backingScaleFactor, 1)
+        let pointSize = NSSize(
+            width: CGFloat(display.image.width) / scale,
+            height: CGFloat(display.image.height) / scale
+        )
+        self.snapshot = NSImage(cgImage: display.image, size: pointSize)
         super.init(frame: NSRect(origin: .zero, size: display.screen.frame.size))
         wantsLayer = true
+        layerContentsRedrawPolicy = .onSetNeedsDisplay
+        if let layer {
+            layer.contentsScale = scale
+        }
 
         state.$mode
             .receive(on: DispatchQueue.main)
@@ -87,7 +95,15 @@ final class OverlayContentView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        snapshot.draw(in: bounds)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        snapshot.draw(
+            in: bounds,
+            from: NSRect(origin: .zero, size: snapshot.size),
+            operation: .copy,
+            fraction: 1,
+            respectFlipped: true,
+            hints: [.interpolation: NSImageInterpolation.high]
+        )
 
         let hole: NSRect? = {
             switch state.mode {

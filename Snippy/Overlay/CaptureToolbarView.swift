@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Leiste mit Bildschirm, Bereich, Fenster und Abbrechen.
 struct CaptureToolbarView: View {
     @ObservedObject var state: OverlayState
     var onChooseScreen: () -> Void
@@ -9,10 +10,9 @@ struct CaptureToolbarView: View {
         HStack(spacing: 2) {
             ForEach(CaptureMode.allCases) { mode in
                 Button {
+                    state.mode = mode
                     if mode == .screen {
                         onChooseScreen()
-                    } else {
-                        state.mode = mode
                     }
                 } label: {
                     VStack(spacing: 3) {
@@ -23,6 +23,7 @@ struct CaptureToolbarView: View {
                     }
                     .foregroundStyle(state.mode == mode ? Color.primary : Color.secondary)
                     .frame(width: 78, height: 46)
+                    .contentShape(Rectangle())
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(state.mode == mode ? Color.primary.opacity(0.12) : Color.clear)

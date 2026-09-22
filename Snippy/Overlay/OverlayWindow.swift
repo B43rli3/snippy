@@ -1,5 +1,6 @@
 import AppKit
 
+/// Randloses Fenster über einem Bildschirm. Es nimmt keine Tastaturkürzel von anderen Apps weg und erscheint nicht in der Aufnahme.
 final class OverlayWindow: NSWindow {
     var onRegionSelected: ((NSRect) -> Void)?
     var onWindowChosen: ((CGWindowID) -> Void)?

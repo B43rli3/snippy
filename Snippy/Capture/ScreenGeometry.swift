@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 
+/// Rechnet zwischen Bildschirmpunkten, Quartz-Koordinaten und den Pixeln der Aufnahme um.
 enum ScreenGeometry {
     static func primaryScreen() -> NSScreen? {
         NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.screens.first
@@ -15,7 +16,7 @@ enum ScreenGeometry {
         NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
     }
 
-    /// Converts a Quartz window rectangle (origin top-left of the main display) to Cocoa coordinates.
+    /// Quartz zählt von oben links, Cocoa von unten links. `primaryHeight` ist die Höhe des Hauptbildschirms.
     static func cocoaRect(fromQuartz rect: CGRect, primaryHeight: CGFloat) -> CGRect {
         var converted = rect
         converted.origin.y = primaryHeight - rect.origin.y - rect.height
@@ -31,6 +32,7 @@ enum ScreenGeometry {
         globalRect.intersection(screenFrame).offsetBy(dx: -screenFrame.origin.x, dy: -screenFrame.origin.y)
     }
 
+    /// Auswahl in Bildschirmpunkten (Ursprung unten links) in Pixel der Aufnahme (Ursprung oben links).
     static func crop(
         _ selectionInView: NSRect,
         viewSize: NSSize,

@@ -1,6 +1,7 @@
 import AppKit
 import ServiceManagement
 
+/// „Beim Anmelden starten“ über den Systemdienst der App selbst.
 enum LoginItemManager {
     static var isEnabled: Bool {
         SMAppService.mainApp.status == .enabled

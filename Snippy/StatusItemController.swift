@@ -1,5 +1,6 @@
 import AppKit
 
+/// Scheren-Symbol oben rechts und das Menü dahinter.
 final class StatusItemController: NSObject, NSMenuDelegate {
     var onQuit: (() -> Void)?
     var onOpenLast: (() -> Void)?
@@ -10,17 +11,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private var loginItem: NSMenuItem?
     private var lastItem: NSMenuItem?
-    private var accessibilityItem: NSMenuItem?
     private var screenItem: NSMenuItem?
 
     func install() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(
-                systemSymbolName: "camera.viewfinder",
-                accessibilityDescription: L10n.appName
-            )
-            button.image?.isTemplate = true
+            button.image = menuBarImage()
         }
 
         let menu = NSMenu()
@@ -65,15 +61,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let accessibility = NSMenuItem(
-            title: L10n.menuAccessibility,
-            action: #selector(openAccessibility),
-            keyEquivalent: ""
-        )
-        accessibility.target = self
-        menu.addItem(accessibility)
-        accessibilityItem = accessibility
-
         let screen = NSMenuItem(
             title: L10n.menuScreenRecording,
             action: #selector(openScreenRecording),
@@ -100,12 +87,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         lastItem?.isEnabled = lastScreenshotExists?() ?? false
         loginItem?.state = LoginItemManager.isEnabled ? .on : .off
-        let trusted = PermissionOnboarding.ensureAccessibility(prompt: false)
-        accessibilityItem?.isHidden = trusted
-        screenItem?.isHidden = CGPreflightScreenCaptureAccess()
-        if trusted {
-            onRetryHotkey?()
-        }
+        screenItem?.isHidden = PermissionOnboarding.screenRecordingGranted
+        onRetryHotkey?()
     }
 
     @objc private func newCapture() {
@@ -124,15 +107,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
-    @objc private func openAccessibility() {
-        PermissionOnboarding.openAccessibilitySettings()
-    }
-
     @objc private func openScreenRecording() {
         PermissionOnboarding.openScreenRecordingSettings()
     }
 
     @objc private func quitApp() {
         onQuit?()
+    }
+
+    private func menuBarImage() -> NSImage {
+        if let url = Bundle.main.url(forResource: "MenuIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            image.isTemplate = true
+            image.size = NSSize(width: 18, height: 18)
+            return image
+        }
+        let fallback = NSImage(systemSymbolName: "scissors", accessibilityDescription: L10n.appName) ?? NSImage()
+        fallback.isTemplate = true
+        return fallback
     }
 }

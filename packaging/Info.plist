@@ -13,6 +13,10 @@
 	<string>Snippy</string>
 	<key>CFBundleExecutable</key>
 	<string>Snippy</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.christiannurnberger.Snippy</string>
 	<key>CFBundleInfoDictionaryVersion</key>

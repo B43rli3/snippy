@@ -1,19 +1,28 @@
 import AppKit
+import ApplicationServices
 import Darwin
 
+/// Menüleisten-App: Shortcut, Einfrieren, Speichern. Beendet sich nur über das Menü oder einen echten Neustart.
 final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     private let statusItem = StatusItemController()
     private let hotkey = HotkeyTap()
     private let overlay = CaptureOverlayController()
     private let store = ScreenshotStore()
-    private var accessibilityWatch: DispatchSourceTimer?
     private var signalSource: DispatchSourceSignal?
     private var shouldExitAfterCapture = false
+    /// Nur Beenden, die Übergabe an /Applications oder ein Neustart dürfen den Prozess wirklich schließen.
+    static var allowTerminate = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("--preflight") {
+            exit(CGPreflightScreenCaptureAccess() ? 0 : 2)
+        }
+        if handOffToInstalledCopy(args) {
+            return
+        }
         if args.contains("--self-test") {
             PermissionOnboarding.suppressUI = true
             let ok = SelfTest.runUnitTests()
@@ -29,7 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             return
         }
 
-        statusItem.onQuit = { NSApp.terminate(nil) }
+        statusItem.onQuit = {
+            AppDelegate.allowTerminate = true
+            NSApp.terminate(nil)
+        }
         statusItem.onOpenLast = { [weak self] in
             self?.store.openLast()
         }
@@ -58,12 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 await self?.beginCapture()
             }
         }
-        hotkey.onEscape = { [weak self] in
-            self?.overlay.handleEscape() ?? false
-        }
 
         installSignalHook()
-        startAccessibilityWatch()
 
         if args.contains("--smoke-overlay") || args.contains("--smoke-region") {
             PermissionOnboarding.suppressUI = true
@@ -71,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             let regionSmoke = args.contains("--smoke-region")
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(250))
-                if PermissionOnboarding.ensureScreenRecording() {
+                if await PermissionOnboarding.ensureScreenRecording() {
                     await self.beginCapture()
                 } else {
                     self.overlay.present(ScreenCaptureService.syntheticSession())
@@ -89,16 +97,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             return
         }
 
+        CaptureConfirmation.install()
         PermissionOnboarding.promptIfNeeded()
         hotkey.start()
+
+        let captureOnLaunch = args.contains("--capture-on-launch") || UserDefaults.standard.bool(forKey: "snippy.captureOnLaunch")
+        if captureOnLaunch {
+            UserDefaults.standard.set(false, forKey: "snippy.captureOnLaunch")
+            Task { @MainActor in
+                await self.beginCapture()
+            }
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         hotkey.start()
     }
 
+    /// Spotlight kann die Projektkopie und /Applications/Snippy.app sehen. Nur die installierte App bleibt laufen.
+    private func handOffToInstalledCopy(_ args: [String]) -> Bool {
+        let installed = URL(fileURLWithPath: "/Applications/Snippy.app")
+        let current = Bundle.main.bundleURL.standardizedFileURL
+        let isToolLaunch = args.contains("--self-test") || args.contains("--capture-screen") || args.contains("--smoke-overlay") || args.contains("--smoke-region") || args.contains("--preflight")
+        guard !isToolLaunch,
+              FileManager.default.fileExists(atPath: installed.path),
+              current.path != installed.standardizedFileURL.path
+        else {
+            return false
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: installed, configuration: configuration) { _, _ in
+            DispatchQueue.main.async {
+                AppDelegate.allowTerminate = true
+                NSApp.terminate(nil)
+            }
+        }
+        return true
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        Self.allowTerminate ? .terminateNow : .terminateCancel
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
-        accessibilityWatch?.cancel()
         signalSource?.cancel()
         hotkey.stop()
     }
@@ -107,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     private func beginCapture() async {
         guard !overlay.isActive else { return }
 
-        if !PermissionOnboarding.ensureScreenRecording() {
+        if !(await PermissionOnboarding.ensureScreenRecording()) {
             return
         }
 
@@ -121,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
 
     @MainActor
     private func captureFullScreenWithoutOverlay() async {
-        guard PermissionOnboarding.ensureScreenRecording() else {
+        guard await PermissionOnboarding.ensureScreenRecording() else {
             fputs("Snippy: screen recording permission missing\n", stderr)
             if shouldExitAfterCapture { exit(2) }
             return
@@ -163,28 +205,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
                 print("Saved \(url.path)")
                 exit(0)
             }
+            CaptureConfirmation.show(image: image, url: url)
         } catch {
             PermissionOnboarding.showError(error)
             if shouldExitAfterCapture { exit(1) }
         }
-    }
-
-    private func startAccessibilityWatch() {
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + 1.5, repeating: 1.5)
-        timer.setEventHandler { [weak self] in
-            guard let self else {
-                timer.cancel()
-                return
-            }
-            self.hotkey.start()
-            if self.hotkey.isRunning {
-                timer.cancel()
-                self.accessibilityWatch = nil
-            }
-        }
-        timer.resume()
-        accessibilityWatch = timer
     }
 
     private func installSignalHook() {

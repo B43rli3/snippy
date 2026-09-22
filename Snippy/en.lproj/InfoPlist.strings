@@ -1,1 +1,2 @@
+/* System text shown when macOS asks for Screen Recording. */
 "NSScreenCaptureUsageDescription" = "Snippy needs Screen Recording permission to capture your screen.";

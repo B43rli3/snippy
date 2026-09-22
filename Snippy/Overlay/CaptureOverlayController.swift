@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+/// Ein Overlay pro Bildschirm plus die Leiste oben. Escape und das X brechen ab.
 final class CaptureOverlayController: NSObject, @unchecked Sendable {
     private(set) var isActive = false
     var onOutcome: ((OverlayOutcome) -> Void)?
@@ -14,7 +15,6 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
         cancel(notify: false)
         self.session = session
         isActive = true
-        state.mode = .region
 
         for display in session.displays {
             let window = OverlayWindow(display: display, state: state, windows: session.windows)
@@ -40,6 +40,8 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
                 return window.frame.intersects(mouseScreen.frame)
             } ?? overlayWindows.first
         keyWindow?.makeKeyAndOrderFront(nil)
+        // Die Leiste nach dem Overlay nach vorn, sonst schluckt die Fläche die Klicks auf Bildschirm und Fenster.
+        toolbarWindow?.orderFrontRegardless()
     }
 
     func cancel(notify: Bool) {
@@ -48,12 +50,6 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
         if notify, wasActive {
             onOutcome?(.cancel)
         }
-    }
-
-    func handleEscape() -> Bool {
-        guard isActive else { return false }
-        cancel(notify: true)
-        return true
     }
 
     func captureTestRegion(_ rect: NSRect) {
@@ -129,9 +125,9 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
         let fitting = host.fittingSize
         host.frame = NSRect(origin: .zero, size: NSSize(width: max(fitting.width, 320), height: max(fitting.height, 58)))
 
-        let window = NSWindow(
+        let window = NSPanel(
             contentRect: host.frame,
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -148,6 +144,8 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
         window.identifier = NSUserInterfaceItemIdentifier("snippy.toolbar")
         window.contentView = host
         window.ignoresMouseEvents = false
+        window.becomesKeyOnlyIfNeeded = true
+        window.worksWhenModal = true
 
         let target = screen ?? NSScreen.main
         if let target {

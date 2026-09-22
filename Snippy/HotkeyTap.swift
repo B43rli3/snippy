@@ -1,117 +1,69 @@
 import AppKit
-import CoreGraphics
+import Carbon
 
-/// Global Fn+S listener. Carbon hotkeys cannot see the Fn/Globe modifier.
+/// Globales Steuerung+Umschalt+S. Die Globus-Taste gehört macOS (Siri) und lässt sich nicht überschreiben.
+/// Carbon braucht dafür keine Bedienungshilfen.
 final class HotkeyTap: @unchecked Sendable {
-    private static let sKeyCode: Int64 = 1
-    private static let escapeKeyCode: Int64 = 53
-
     var onTrigger: (() -> Void)?
-    var onEscape: (() -> Bool)?
 
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
-
-    var isRunning: Bool { eventTap != nil }
+    private var hotKey: EventHotKeyRef?
+    private var handler: EventHandlerRef?
 
     func start() {
-        if eventTap != nil {
+        if hotKey != nil {
             return
         }
 
-        guard PermissionOnboarding.ensureAccessibility(prompt: false) else {
-            return
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, _, userData in
+                guard let userData else { return OSStatus(eventNotHandledErr) }
+                let owner = Unmanaged<HotkeyTap>.fromOpaque(userData).takeUnretainedValue()
+                owner.onTrigger?()
+                return noErr
+            },
+            1,
+            &eventType,
+            context,
+            &handler
+        )
+
+        let hotKeyID = EventHotKeyID(signature: fourCharCode("SNPY"), id: 1)
+        let status = RegisterEventHotKey(
+            UInt32(kVK_ANSI_S),
+            UInt32(controlKey | shiftKey),
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKey
+        )
+        if status != noErr {
+            hotKey = nil
+            fputs("Snippy: could not register Control+Shift+S (\(status))\n", stderr)
         }
-
-        let mask: CGEventMask =
-            (CGEventMask(1) << CGEventType.keyDown.rawValue)
-            | (CGEventMask(1) << CGEventType.keyUp.rawValue)
-            | (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
-
-        let callback: CGEventTapCallBack = { proxy, type, event, refcon in
-            guard let refcon else {
-                return Unmanaged.passUnretained(event)
-            }
-            let tap = Unmanaged<HotkeyTap>.fromOpaque(refcon).takeUnretainedValue()
-            return tap.handle(proxy: proxy, type: type, event: event)
-        }
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: callback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
-            return
-        }
-
-        eventTap = tap
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        runLoopSource = source
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
     }
 
     func stop() {
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        if let hotKey {
+            UnregisterEventHotKey(hotKey)
         }
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
+        if let handler {
+            RemoveEventHandler(handler)
         }
-        runLoopSource = nil
-        eventTap = nil
+        hotKey = nil
+        handler = nil
     }
 
-    func restart() {
-        stop()
-        start()
-    }
-
-    private func handle(
-        proxy _: CGEventTapProxy,
-        type: CGEventType,
-        event: CGEvent
-    ) -> Unmanaged<CGEvent>? {
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let eventTap {
-                CGEvent.tapEnable(tap: eventTap, enable: true)
-            }
-            return Unmanaged.passUnretained(event)
+    private func fourCharCode(_ string: String) -> OSType {
+        var result: OSType = 0
+        for scalar in string.unicodeScalars.prefix(4) {
+            result = (result << 8) + OSType(scalar.value)
         }
-
-        if type == .flagsChanged {
-            return Unmanaged.passUnretained(event)
-        }
-
-        guard type == .keyDown || type == .keyUp else {
-            return Unmanaged.passUnretained(event)
-        }
-
-        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-        let flags = event.flags
-        if keyCode == Self.escapeKeyCode, type == .keyDown {
-            let consumed = onEscape?() ?? false
-            return consumed ? nil : Unmanaged.passUnretained(event)
-        }
-
-        let fnDown = flags.contains(.maskSecondaryFn)
-        let hasOtherModifier =
-            flags.contains(.maskCommand)
-            || flags.contains(.maskControl)
-            || flags.contains(.maskAlternate)
-            || flags.contains(.maskShift)
-
-        // Only consume S when the event itself has Fn. A sticky fnHeld must never eat normal typing.
-        if fnDown, !hasOtherModifier, keyCode == Self.sKeyCode {
-            if type == .keyDown {
-                onTrigger?()
-            }
-            return nil
-        }
-
-        return Unmanaged.passUnretained(event)
+        return result
     }
 }

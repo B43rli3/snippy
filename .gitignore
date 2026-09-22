@@ -12,3 +12,4 @@ timeline.xctimeline
 playground.xcworkspace
 .idea/
 build/
+dist/

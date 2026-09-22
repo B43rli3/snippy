@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import ScreenCaptureKit
 
+/// Friert jeden Bildschirm in nativen Pixeln ein. Fenster werden daraus ausgeschnitten, nicht noch einmal aufgenommen.
 @MainActor
 enum ScreenCaptureService {
     static func freeze() async throws -> FrozenSession {
@@ -47,8 +48,10 @@ enum ScreenCaptureService {
 
             let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
             let configuration = SCStreamConfiguration()
-            configuration.width = scDisplay.width
-            configuration.height = scDisplay.height
+            // Echte Retina-Pixel. Die Displaymaße von ScreenCaptureKit sind auf manchen Systemen nur 1×.
+            let scale = max(screen.backingScaleFactor, 1)
+            configuration.width = max(1, Int((screen.frame.width * scale).rounded()))
+            configuration.height = max(1, Int((screen.frame.height * scale).rounded()))
             configuration.showsCursor = false
             configuration.colorSpaceName = CGColorSpace.sRGB
 
@@ -106,8 +109,7 @@ enum ScreenCaptureService {
             windows.append(
                 CapturableWindow(
                     windowID: rawID,
-                    frameCocoa: ScreenGeometry.cocoaRect(fromQuartz: rect),
-                    title: title
+                    frameCocoa: ScreenGeometry.cocoaRect(fromQuartz: rect)
                 )
             )
         }

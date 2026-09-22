@@ -2,6 +2,7 @@ import AppKit
 import ImageIO
 import UniformTypeIdentifiers
 
+/// Speichert PNG nach Bilder/Screenshots und legt dieselbe Datei in die Zwischenablage.
 final class ScreenshotStore {
     private let lastPathKey = "lastScreenshotPath"
 

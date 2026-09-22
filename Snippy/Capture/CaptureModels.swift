@@ -1,5 +1,6 @@
 import AppKit
 
+/// Bildschirm, Bereich oder Fenster. Die Leiste schaltet nur den Modus; die Aufnahme kommt aus dem eingefrorenen Bild.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case screen
     case region
@@ -30,23 +31,26 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// Ergebnis des Overlays: abgebrochen oder das fertige Bild.
 enum OverlayOutcome {
     case cancel
     case image(CGImage)
 }
 
+/// Ein Bildschirm samt seiner Aufnahme in echten Pixeln.
 struct FrozenDisplay {
     let screen: NSScreen
     let displayID: CGDirectDisplayID
     let image: CGImage
 }
 
+/// Ein fremdes Fenster, das im Fenstermodus gewählt werden kann.
 struct CapturableWindow {
     let windowID: CGWindowID
     let frameCocoa: CGRect
-    let title: String
 }
 
+/// Alle Bildschirme und Fenster zum Zeitpunkt des Einfrierens.
 struct FrozenSession {
     let displays: [FrozenDisplay]
     let windows: [CapturableWindow]
@@ -55,7 +59,6 @@ struct FrozenSession {
 enum CaptureError: LocalizedError {
     case noDisplays
     case captureFailed
-    case windowUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -63,8 +66,6 @@ enum CaptureError: LocalizedError {
             L10n.errorNoDisplays
         case .captureFailed:
             L10n.errorCaptureFailed
-        case .windowUnavailable:
-            L10n.errorWindowUnavailable
         }
     }
 }

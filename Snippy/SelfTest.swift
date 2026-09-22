@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 
+/// Prüft Ausschnitt, Koordinaten, Dateinamen und PNG, ohne die Oberfläche zu öffnen.
 enum SelfTest {
     static func runUnitTests() -> Bool {
         var failures: [String] = []

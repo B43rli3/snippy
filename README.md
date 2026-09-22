@@ -1,46 +1,59 @@
 # Snippy
 
-Menu-bar screenshot tool for macOS, modeled after Windows Snipping Tool (`Win + S`).
+Snippy is a menu-bar screenshot app for macOS, in the spirit of the Windows Snipping Tool.
 
-Snippy lives in the menu bar. Press **Fn+S** to freeze the screen, then choose **Screen**, **Region**, or **Window**. The PNG is saved to **Pictures → Screenshots** and copied to the clipboard.
+It stays in the menu bar. Press **Control+Shift+S** to freeze the screen, then choose **Screen**, **Region**, or **Window**. The picture is saved as a PNG in **Pictures → Screenshots** and copied to the clipboard. A normal macOS notification confirms the save and shows a preview of that screenshot.
 
-The interface follows the system language (German and English).
+The menu follows the system language (English or German).
+
+## Download
+
+The current disk image is on the [latest release](https://github.com/B43rli3/snippy/releases/latest). Open it and drag Snippy to Applications.
+
+Install steps, the first-launch prompt, Screen Recording, and notifications are in **[Install and set up](docs/INSTALL.md)**.
 
 ## Requirements
 
+- Mac with Apple silicon
 - macOS 15.2 or later
-- Xcode 16+ (or the bundled `scripts/build.sh` using the Xcode toolchain)
 
-## Build
+## What you can do
+
+- Freeze the screen and pick the whole display, a region, or a window
+- Keep the last choice selected for the next shortcut
+- Save a PNG and copy it to the clipboard
+- See a notification with a preview of the saved screenshot
+- Open the last screenshot, start Snippy at login, and quit from the menu
+
+**Control+Shift+S** is the shortcut. The Globe / Fn key belongs to macOS (Siri), so Snippy does not use Fn+S. The shortcut does not need Accessibility access.
+
+## Build from source
+
+You need Xcode installed. From the repository root:
 
 ```bash
 ./scripts/build.sh
-open build/Snippy.app
 ```
 
-Or open `Snippy.xcodeproj` in Xcode, select your signing team, and run.
+That compiles Snippy, signs it with your Apple Development identity when one is available, and copies it to `/Applications/Snippy.app`.
 
-The first time you use Xcode’s command-line tools on a Mac, Apple asks you to accept the **Xcode license**:
+To build the downloadable disk image instead, without replacing the installed app:
+
+```bash
+./scripts/package-dmg.sh
+```
+
+The image is written to `dist/Snippy.dmg`.
+
+The first time the Xcode command-line tools are used, Apple may ask you to accept the Xcode license:
 
 ```bash
 sudo xcodebuild -license
 ```
 
-That is a one-time Apple agreement. It is not a Snippy license. You only need it to compile with `xcodebuild` / Xcode. `scripts/build.sh` can build without it as long as Xcode.app is installed.
+That is Apple’s license, not Snippy’s. `scripts/build.sh` uses the Swift compiler inside Xcode.app.
 
-## Permissions
-
-- **Accessibility** — so Fn+S works globally
-- **Screen Recording** — so Snippy can capture the display
-
-If the Globe key opens emoji, set it to **Do Nothing** in Keyboard settings.
-
-## Usage
-
-- **Fn+S** or menu **New Screenshot**
-- Toolbar: Screen / Region / Window
-- Escape cancels
-- Menu: open last screenshot, start at login, quit
+You can also open `Snippy.xcodeproj` and run it from Xcode. Select your development team if Xcode asks.
 
 ## License
 

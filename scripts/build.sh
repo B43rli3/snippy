@@ -36,7 +36,9 @@ done < <(find "$ROOT/Snippy" -name '*.swift' | sort)
   -framework Combine \
   -framework CoreGraphics \
   -framework ImageIO \
+  -framework Carbon \
   -framework UniformTypeIdentifiers \
+  -framework UserNotifications \
   "${SOURCES[@]}"
 
 cp "$ROOT/packaging/Info.plist" "$APP/Contents/Info.plist"
@@ -44,7 +46,38 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 mkdir -p "$RESOURCES/de.lproj" "$RESOURCES/en.lproj"
 cp "$ROOT/Snippy/de.lproj/"* "$RESOURCES/de.lproj/"
 cp "$ROOT/Snippy/en.lproj/"* "$RESOURCES/en.lproj/"
+cp "$ROOT/Snippy/MenuIcon.png" "$RESOURCES/MenuIcon.png"
+iconutil -c icns "$ROOT/Snippy/AppIcon.iconset" -o "$RESOURCES/AppIcon.icns"
 
-codesign --force --sign - --entitlements "$ROOT/Snippy/Snippy.entitlements" "$APP" >/dev/null
+# SNIPPY_SIGN=auto | development | adhoc
+# auto uses the local Apple Development identity when it is installed.
+# adhoc is for the public DMG: it is not tied to this Mac's developer certificate.
+SIGN_MODE="${SNIPPY_SIGN:-auto}"
+codesign_app() {
+  local target="$1"
+  local dev_id="Apple Development: nuernberger99@aol.com (R2L8FM9VJ7)"
+  local identity="-"
+  if [[ "$SIGN_MODE" != "adhoc" ]] && security find-identity -p codesigning -v 2>/dev/null | grep -F -q "$dev_id"; then
+    identity="$dev_id"
+  fi
+  if [[ "$identity" == "-" ]]; then
+    codesign --force --sign - --entitlements "$ROOT/Snippy/Snippy.entitlements" "$target"
+  else
+    codesign --force --sign "$identity" --options runtime --entitlements "$ROOT/Snippy/Snippy.entitlements" "$target"
+  fi
+}
 
-echo "Built $APP"
+codesign_app "$APP"
+
+if [[ "${SNIPPY_INSTALL:-1}" == "1" ]]; then
+  installed="/Applications/Snippy.app"
+  if rm -rf "$installed" && cp -R "$APP" "$installed"; then
+    codesign_app "$installed"
+    rm -rf "$APP"
+    echo "Installed $installed"
+  else
+    echo "Built $APP"
+  fi
+else
+  echo "Built $APP"
+fi

@@ -1,6 +1,8 @@
 import AppKit
 import Darwin
 
+/// Einstieg. Der Selbsttest beendet sich, bevor die Menüleiste startet.
+
 @main
 enum SnippyMain {
     static func main() {
