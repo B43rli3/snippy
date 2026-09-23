@@ -20,6 +20,7 @@ The first time you open it, macOS says it could not verify the app. Click **Done
 ## What you can do
 
 - Freeze the screen and pick the whole display, a region, or a window
+- Window mode saves that window’s own contents, including parts covered by another window
 - Keep the last choice selected for the next shortcut
 - Save a PNG and copy it to the clipboard
 - See a notification with a preview of the saved screenshot
@@ -54,6 +55,8 @@ sudo xcodebuild -license
 That is Apple’s license, not Snippy’s. `scripts/build.sh` uses the Swift compiler inside Xcode.app.
 
 You can also open `Snippy.xcodeproj` and run it from Xcode. Select your development team if Xcode asks.
+
+Version history is in **[Changelog](docs/CHANGELOG.md)**. Version 1.0.0 is archived.
 
 ## License
 

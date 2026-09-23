@@ -194,6 +194,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
             if shouldExitAfterCapture { exit(3) }
         case .image(let image):
             save(image)
+        case .failed(let error):
+            PermissionOnboarding.showError(error)
+            if shouldExitAfterCapture { exit(1) }
         }
     }
 

@@ -10,6 +10,7 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
     private var overlayWindows: [OverlayWindow] = []
     private var toolbarWindow: NSWindow?
     private var session: FrozenSession?
+    private var windowCaptureGeneration = 0
 
     func present(_ session: FrozenSession) {
         cancel(notify: false)
@@ -22,7 +23,7 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
                 self?.finishRegion(rect, on: display)
             }
             window.onWindowChosen = { [weak self] windowID in
-                self?.finishWindow(windowID, on: display)
+                self?.finishWindow(windowID)
             }
             window.onCancel = { [weak self] in
                 self?.cancel(notify: true)
@@ -45,6 +46,7 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
     }
 
     func cancel(notify: Bool) {
+        windowCaptureGeneration += 1
         let wasActive = isActive
         dismiss()
         if notify, wasActive {
@@ -65,13 +67,26 @@ final class CaptureOverlayController: NSObject, @unchecked Sendable {
         emitCroppedImage(rect, on: display)
     }
 
-    private func finishWindow(_ windowID: CGWindowID, on display: FrozenDisplay) {
-        guard let target = session?.windows.first(where: { $0.windowID == windowID }) else {
+    /// Fenster einzeln aufnehmen. Die Generationsnummer verwirft das Ergebnis, wenn der Nutzer vorher abbricht.
+    private func finishWindow(_ windowID: CGWindowID) {
+        guard session?.windows.contains(where: { $0.windowID == windowID }) == true else {
             cancel(notify: true)
             return
         }
-        let viewRect = ScreenGeometry.viewRect(forGlobalRect: target.frameCocoa, screenFrame: display.screen.frame)
-        emitCroppedImage(viewRect, on: display)
+        windowCaptureGeneration += 1
+        let generation = windowCaptureGeneration
+        Task { @MainActor in
+            do {
+                let image = try await ScreenCaptureService.captureWindow(windowID: windowID)
+                guard generation == self.windowCaptureGeneration, self.isActive else { return }
+                self.dismiss()
+                self.onOutcome?(.image(image))
+            } catch {
+                guard generation == self.windowCaptureGeneration, self.isActive else { return }
+                self.dismiss()
+                self.onOutcome?(.failed(error as? CaptureError ?? .captureFailed))
+            }
+        }
     }
 
     private func emitCroppedImage(_ rect: NSRect, on display: FrozenDisplay) {

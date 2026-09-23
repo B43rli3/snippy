@@ -1,6 +1,6 @@
 import AppKit
 
-/// Bildschirm, Bereich oder Fenster. Die Leiste schaltet nur den Modus; die Aufnahme kommt aus dem eingefrorenen Bild.
+/// Bildschirm, Bereich oder Fenster. Bildschirm und Bereich kommen aus dem eingefrorenen Bild, ein Fenster wird einzeln aufgenommen.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case screen
     case region
@@ -35,6 +35,8 @@ enum CaptureMode: String, CaseIterable, Identifiable {
 enum OverlayOutcome {
     case cancel
     case image(CGImage)
+    /// Die Fensteraufnahme ist fehlgeschlagen. Bildschirm- und Bereichsmodus nutzen diesen Fall nicht.
+    case failed(CaptureError)
 }
 
 /// Ein Bildschirm samt seiner Aufnahme in echten Pixeln.

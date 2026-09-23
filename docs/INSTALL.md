@@ -58,7 +58,7 @@ Press **Control+Shift+S** (⌃⇧S). The screen freezes and a small bar appears 
 | --- | --- |
 | **Screen** | Saves the whole display under the pointer |
 | **Region** | Drag a rectangle |
-| **Window** | Click a window |
+| **Window** | Click a window. Snippy saves that window, including the parts hidden behind another window |
 
 **Escape** or the **X** cancels.
 

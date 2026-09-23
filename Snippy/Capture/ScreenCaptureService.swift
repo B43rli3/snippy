@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import ScreenCaptureKit
 
-/// Friert jeden Bildschirm in nativen Pixeln ein. Fenster werden daraus ausgeschnitten, nicht noch einmal aufgenommen.
+/// Friert jeden Bildschirm in nativen Pixeln ein. Ein gewähltes Fenster wird danach einzeln aufgenommen, damit ein Fenster davor nicht mit im Bild ist.
 @MainActor
 enum ScreenCaptureService {
     static func freeze() async throws -> FrozenSession {
@@ -21,6 +21,20 @@ enum ScreenCaptureService {
             return window.windowID
         })
         return FrozenSession(displays: displays, windows: windowsFromWindowList(allowedIDs: allowedIDs))
+    }
+
+    /// Nimmt den eigenen Inhalt des Fensters auf.
+    /// Ein Ausschnitt aus dem eingefrorenen Bildschirm würde ein Fenster zeigen, das davor liegt.
+    /// `desktopIndependentWindow` liest das Fenster selbst, auch wenn es verdeckt ist.
+    static func captureWindow(windowID: CGWindowID) async throws -> CGImage {
+        if let image = try await captureWindow(windowID: windowID, onScreenOnly: true) {
+            return image
+        }
+        // Ein vollständig verdecktes Fenster gilt manchmal nicht mehr als „auf dem Bildschirm“.
+        if let image = try await captureWindow(windowID: windowID, onScreenOnly: false) {
+            return image
+        }
+        throw CaptureError.captureFailed
     }
 
     static func syntheticSession() -> FrozenSession {
@@ -68,6 +82,34 @@ enum ScreenCaptureService {
             frozen.append(FrozenDisplay(screen: screen, displayID: displayID, image: image))
         }
         return frozen
+    }
+
+    private static func captureWindow(windowID: CGWindowID, onScreenOnly: Bool) async throws -> CGImage? {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: onScreenOnly)
+        guard let window = content.windows.first(where: { $0.windowID == windowID }) else {
+            return nil
+        }
+
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let configuration = SCStreamConfiguration()
+        // Retina-Pixel der Fensterfläche, ohne den Schatten darum. Sonst wäre das Bild größer als das Fenster.
+        let scale = max(CGFloat(filter.pointPixelScale), 1)
+        let rect = filter.contentRect.width >= 1 && filter.contentRect.height >= 1 ? filter.contentRect : window.frame
+        configuration.width = max(1, Int((rect.width * scale).rounded()))
+        configuration.height = max(1, Int((rect.height * scale).rounded()))
+        configuration.showsCursor = false
+        configuration.ignoreShadowsSingleWindow = true
+        configuration.captureResolution = .best
+        configuration.colorSpaceName = CGColorSpace.sRGB
+
+        do {
+            return try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: configuration
+            )
+        } catch {
+            throw CaptureError.captureFailed
+        }
     }
 
     private static func windowsFromWindowList(allowedIDs: Set<CGWindowID>?) -> [CapturableWindow] {
